@@ -13,10 +13,75 @@
       crossorigin
       src="https://unpkg.com/react-dom@16/umd/react-dom.production.min.js"
     ></script>
+    <script
+      crossorigin
+      src="https://cdnjs.cloudflare.com/ajax/libs/react-router-dom/5.0.1/react-router-dom.js"
+    ></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.26.0/babel.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.19.0/axios.js"></script>
+    <script src="/acme_user.js"></script>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
+    <div id="root"></div>
+    <script type="text/babel">
+      const { Component } = React;
+      const { render } = ReactDOM;
+      const { HashRouter, Route, NavLink, Redirect, Switch } = ReactRouterDOM;
+      const root = document.querySelector("#root");
+
+      const Notes = () => {
+        return <h2> Notes</h2>;
+      };
+
+      const Archived = () => {
+        return <h2> Archived</h2>;
+      };
+
+      const Create = () => {
+        return <h2> Create</h2>;
+      };
+
+      class App extends Component {
+        constructor() {
+          super();
+          this.state = {
+            user: {}
+          };
+        }
+
+        async componentDidMount() {
+          const user = await fetchUser();
+          this.setState({ user });
+        }
+
+        render() {
+          const { user } = this.state;
+          return (
+            <HashRouter>
+              <nav>
+                <NavLink exact to="/notes" activeClassName="selected">
+                  Notes
+                </NavLink>
+                <NavLink to="/archived" activeClassName="selected">
+                  Archived
+                </NavLink>
+                <NavLink to="/notes/create" activeClassName="selected">
+                  Create
+                </NavLink>
+              </nav>
+              <h1>Acme Note--taker for {user.fullName} </h1>
+              <Switch>
+                <Route exact path="/notes" render={() => <Notes />} />
+                <Route path="/archived" render={() => <Archived />} />
+                <Route path="/notes/create" render={() => <Create />} />
+              </Switch>
+            </HashRouter>
+          );
+        }
+      }
+
+      render(<App />, root);
+    </script>
   </body>
-  </html>
+</html>
