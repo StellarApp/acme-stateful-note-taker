@@ -4,6 +4,10 @@ nav {
   align-items: center;
 }
 
+span {
+  display: flex;
+}
+
 .selected {
   background: cornflowerblue;
   color: whitesmoke;

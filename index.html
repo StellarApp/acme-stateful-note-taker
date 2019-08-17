@@ -30,8 +30,18 @@
       const { HashRouter, Route, NavLink, Redirect, Switch } = ReactRouterDOM;
       const root = document.querySelector("#root");
 
-      const Notes = () => {
-        return <h2> Notes</h2>;
+      const Notes = ({ notes, onUpdate }) => {
+        return (
+          <ul>{
+            notes.map(note => <li>
+              {note.text}
+              <span>
+                <button onClick={ (ev) => onUpdate(note) }>Archive</button>
+                <button>Destroy</button>
+              </span>
+            </li>)
+          }</ul>
+        );
       };
 
       const Archived = () => {
@@ -46,25 +56,49 @@
         constructor() {
           super();
           this.state = {
-            user: {}
+            user: {},
+            notes: []
           };
+
+          this.onUpdate = this.onUpdate.bind(this);
+        }
+
+        async onUpdate(note) {
+          const { user, notes } = this.state;
+
+          const updatedNote = (await axios.put(
+            `${API}/users/${user.id}/notes/${note.id}`,
+            { archived: true, text: note.text }
+          )).data;
+
+          this.setState({
+            notes: notes.map(_note =>
+              (_note.id === updatedNote.id) ? updatedNote : _note
+            )
+          });
         }
 
         async componentDidMount() {
           const user = await fetchUser();
-          this.setState({ user });
+          const notes = (await axios.get(`${API}/users/${user.id}/notes`)).data;
+          this.setState({ user, notes });
         }
 
         render() {
-          const { user } = this.state;
+          const { user, notes } = this.state;
+          const { onUpdate } = this;
+
+          const unarchivedNotes = notes.filter(note => !note.archived);
+          const archivedNotes = notes.filter(note => note.archived);
+
           return (
             <HashRouter>
               <nav>
                 <NavLink exact to="/notes" activeClassName="selected">
-                  Notes
+                  Notes ({unarchivedNotes.length})
                 </NavLink>
                 <NavLink to="/archived" activeClassName="selected">
-                  Archived
+                  Archived ({archivedNotes.length})
                 </NavLink>
                 <NavLink to="/notes/create" activeClassName="selected">
                   Create
@@ -72,9 +106,12 @@
               </nav>
               <h1>Acme Note--taker for {user.fullName} </h1>
               <Switch>
-                <Route exact path="/notes" render={() => <Notes />} />
+                <Route exact
+                  path="/notes"
+                  render={() => <Notes notes={unarchivedNotes} onUpdate={onUpdate} />} />
                 <Route path="/archived" render={() => <Archived />} />
                 <Route path="/notes/create" render={() => <Create />} />
+                <Redirect to="/notes" />
               </Switch>
             </HashRouter>
           );
