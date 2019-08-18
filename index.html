@@ -30,27 +30,60 @@
       const { HashRouter, Route, NavLink, Redirect, Switch } = ReactRouterDOM;
       const root = document.querySelector("#root");
 
-      const Notes = ({ notes, onUpdate }) => {
+      const Notes = ({ notes, onUpdate, onDelete }) => {
         return (
-          <ul>{
-            notes.map(note => <li>
-              {note.text}
-              <span>
-                <button onClick={ (ev) => onUpdate(note) }>Archive</button>
-                <button>Destroy</button>
-              </span>
-            </li>)
-          }</ul>
+          <ul>
+            {notes.map(note => (
+              <li>
+                {note.text}
+                <span>
+                  <button onClick={ev => onUpdate(note)}>Archive</button>
+                  <button onClick={ev => onDelete(note)}>Destroy</button>
+                </span>
+              </li>
+            ))}
+          </ul>
         );
       };
 
-      const Archived = () => {
-        return <h2> Archived</h2>;
+      const Archived = ({ notes, onUpdate, onDelete }) => {
+        return (
+          <ul>
+            {notes.map(note => (
+              <li>
+                {note.text}
+                <span>
+                  <button onClick={ev => onUpdate(note)}>Unarchive</button>
+                  <button onClick={ev => onDelete(note)}>Destroy</button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        );
       };
 
-      const Create = () => {
-        return <h2> Create</h2>;
-      };
+      class CreateNote extends Component {
+        constructor(props) {
+          super();
+          this.state = {
+            note: ""
+          };
+        }
+
+        render() {
+          const { note } = this.state;
+          const { createNewNote, user } = this.props;
+          console.log(user);
+          return (
+            <div>
+              <input
+                onChange={ev => this.setState({ note: ev.target.value })}
+              />
+              <button onClick={user => createNewNote({ note })}>Create</button>
+            </div>
+          );
+        }
+      }
 
       class App extends Component {
         constructor() {
@@ -61,6 +94,7 @@
           };
 
           this.onUpdate = this.onUpdate.bind(this);
+          this.onDelete = this.onDelete.bind(this);
         }
 
         async onUpdate(note) {
@@ -68,14 +102,28 @@
 
           const updatedNote = (await axios.put(
             `${API}/users/${user.id}/notes/${note.id}`,
-            { archived: true, text: note.text }
+            { archived: note.archived ? false : true, text: note.text }
           )).data;
 
           this.setState({
             notes: notes.map(_note =>
-              (_note.id === updatedNote.id) ? updatedNote : _note
+              _note.id === updatedNote.id ? updatedNote : _note
             )
           });
+        }
+
+        async onDelete(note) {
+          const { user, notes } = this.state;
+
+          await axios.delete(`${API}/users/${user.id}/notes/${note.id}`);
+          this.setState({ notes: notes.filter(_note => _note.id !== note.id) });
+        }
+
+        async createNewNote(newNote, user) {
+          // await axios.post(`${API}/users/${user.id}/notes`, {
+          //   archived: false,
+          //   text: newNote
+          // });
         }
 
         async componentDidMount() {
@@ -86,7 +134,7 @@
 
         render() {
           const { user, notes } = this.state;
-          const { onUpdate } = this;
+          const { onUpdate, onDelete, createNewNote } = this;
 
           const unarchivedNotes = notes.filter(note => !note.archived);
           const archivedNotes = notes.filter(note => note.archived);
@@ -106,11 +154,33 @@
               </nav>
               <h1>Acme Note--taker for {user.fullName} </h1>
               <Switch>
-                <Route exact
+                <Route
+                  exact
                   path="/notes"
-                  render={() => <Notes notes={unarchivedNotes} onUpdate={onUpdate} />} />
-                <Route path="/archived" render={() => <Archived />} />
-                <Route path="/notes/create" render={() => <Create />} />
+                  render={() => (
+                    <Notes
+                      notes={unarchivedNotes}
+                      onUpdate={onUpdate}
+                      onDelete={onDelete}
+                    />
+                  )}
+                />
+                <Route
+                  path="/archived"
+                  render={() => (
+                    <Archived
+                      notes={archivedNotes}
+                      onUpdate={onUpdate}
+                      onDelete={onDelete}
+                    />
+                  )}
+                />
+                <Route
+                  path="/notes/create"
+                  render={() => (
+                    <CreateNote createNewNote={createNewNote} user={user} />
+                  )}
+                />
                 <Redirect to="/notes" />
               </Switch>
             </HashRouter>
