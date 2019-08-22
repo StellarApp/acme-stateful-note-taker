@@ -20,6 +20,12 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.26.0/babel.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.19.0/axios.js"></script>
     <script src="/acme_user.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css"
+      integrity="sha384-HSMxcRTRxnN+Bdg0JdbxYKrThecOKuH5zCYotlSAcp1+c8xmyTe9GYg1l9a69psu"
+      crossorigin="anonymous"
+    />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
@@ -63,23 +69,36 @@
       };
 
       class CreateNote extends Component {
-        constructor(props) {
+        constructor() {
           super();
           this.state = {
-            note: ""
+            note: "",
+            error: null
           };
+
+          this.create = this.create.bind(this);
+        }
+
+        create() {
+          const { note, error } = this.state;
+          const { createNewNote, history } = this.props;
+          createNewNote({ note })
+            .then(() => history.push("./notes"))
+            .catch(ex => this.setState({ error: ex.response.data.message }));
         }
 
         render() {
-          const { note } = this.state;
-          const { createNewNote, user } = this.props;
-          console.log(user);
+          const { note, error } = this.state;
+          const { create } = this;
           return (
             <div>
-              <input
-                onChange={ev => this.setState({ note: ev.target.value })}
-              />
-              <button onClick={user => createNewNote({ note })}>Create</button>
+              <div class={error ? "alert alert-danger" : ""}>{error}</div>
+              <div>
+                <input
+                  onChange={ev => this.setState({ note: ev.target.value })}
+                />
+                <button onClick={create}>Create</button>
+              </div>
             </div>
           );
         }
@@ -95,6 +114,7 @@
 
           this.onUpdate = this.onUpdate.bind(this);
           this.onDelete = this.onDelete.bind(this);
+          this.createNewNote = this.createNewNote.bind(this);
         }
 
         async onUpdate(note) {
@@ -119,11 +139,20 @@
           this.setState({ notes: notes.filter(_note => _note.id !== note.id) });
         }
 
-        async createNewNote(newNote, user) {
-          // await axios.post(`${API}/users/${user.id}/notes`, {
-          //   archived: false,
-          //   text: newNote
-          // });
+        async createNewNote(newNote) {
+          const { user, notes } = this.state;
+
+          // console.log(`${user.id}`);
+          // console.log(newNote.note);
+          const createdNote = await axios.post(
+            `${API}/users/${user.id}/notes`,
+            {
+              archived: false,
+              text: newNote.note
+            }
+          );
+
+          this.setState({ notes: [...notes, createdNote] });
         }
 
         async componentDidMount() {
@@ -177,8 +206,12 @@
                 />
                 <Route
                   path="/notes/create"
-                  render={() => (
-                    <CreateNote createNewNote={createNewNote} user={user} />
+                  render={({ history }) => (
+                    <CreateNote
+                      createNewNote={createNewNote}
+                      user={user}
+                      history={history}
+                    />
                   )}
                 />
                 <Redirect to="/notes" />
